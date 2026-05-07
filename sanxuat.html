@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xưởng Sản Xuất - CI BAO HSE</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* MÀU SẮC CHỦ ĐẠO */
+        :root { 
+            --primary: #0d6efd; 
+            --success: #198754; 
+            --danger: #dc3545; 
+            --warning: #ffc107; 
+            --dark: #212529; 
+        }
+        
+        /* CƠ BẢN */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #e9ecef; 
+            padding: 15px; 
+            margin: 0; 
+            color: #333;
+        }
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background: #fff; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+        }
+        h2 { 
+            color: var(--success); 
+            margin-top: 0; 
+            text-align: center; 
+            border-bottom: 2px solid var(--success); 
+            padding-bottom: 15px; 
+            margin-bottom: 25px; 
+        }
+        
+        /* CÁC KHỐI CHỨC NĂNG (SECTIONS) */
+        .section-box { 
+            border: 1px solid #ddd; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin-bottom: 25px; 
+            background: #fff; 
+        }
+        
+        /* DANH SÁCH HÀNG CHỜ XÁC NHẬN (PENDING) */
+        .pending-item { 
+            background: #fffbe6; 
+            border: 2px solid #ffe58f; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 12px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .pending-info {
+            font-size: 15px;
+        }
+        
+        /* FORM INPUTS */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { 
+            display: block; 
+            font-weight: bold; 
+            margin-bottom: 8px; 
+            font-size: 15px; 
+        }
+        .form-group input, .form-group select { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            font-size: 15px; 
+            box-sizing: border-box; 
+        }
+        
+        /* NÚT BẤM */
+        .btn {
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .btn-confirm { background: var(--success); color: white; }
+        .btn-reject { background: var(--danger); color: white; margin-left: 8px; }
+        .max-btn { background: var(--dark); color: white; padding: 0 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; }
+        
+        button[type="submit"] {
+            width: 100%;
+            padding: 15px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button[type="submit"]:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        /* THÔNG BÁO VÀ HINT */
+        .alert { 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            display: none; 
+            font-weight: bold; 
+            text-align: center; 
+        }
+        .alert-success { background: #d1e7dd; color: #0f5132; }
+        .alert-danger { background: #f8d7da; color: #842029; }
+        
+        .hint-text {
+            font-size: 14px;
+            color: red;
+            font-weight: bold;
+            display: block;
+            margin-top: 5px;
+        }
+
+        /* CHECKBOX SỰ CỐ */
+        .spill-box {
+            background: #f8d7da;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #f5c2c7;
+            margin-bottom: 20px;
+        }
+        .spill-box label {
+            color: #842029;
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .spill-box input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin: 0;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🏭 QUẢN LÝ & KHAI BÁO HÓA CHẤT XƯỞNG</h2>
+    <div id="notification" class="alert"></div>
+
+    <p style="text-align: center; color: #666; font-size: 14px; margin-bottom: 30px;">
+        Hệ thống dành cho Tổ trưởng / Chuyền trưởng xác nhận hàng từ kho và báo cáo tiêu hao thực tế.
+    </p>
+
+    <div class="form-group">
+        <label style="color: var(--primary); font-size: 18px;">Bước 1: Chọn Xưởng / Bộ phận của bạn</label>
+        <select id="factory-dept-select" onchange="refreshAllData()" style="border: 2px solid var(--primary); font-weight: bold;">
+            <option value="">-- Đang tải danh sách xưởng... --</option>
+        </select>
+    </div>
+
+    <div id="pending-section" class="section-box" style="display:none; border-top: 5px solid var(--warning);">
+        <h3 style="color: #856404; margin-top: 0;">📦 Có hàng mới từ Kho chuyển xuống!</h3>
+        <p style="font-size: 14px; color: #666;">Vui lòng kiểm tra số lượng thực tế và bấm xác nhận để đưa hàng vào xưởng.</p>
+        <div id="pending-list">
+            </div>
+    </div>
+
+    <form id="form-consume" onsubmit="addConsumption(event)" style="display:none;" class="section-box">
+        <h3 style="color: var(--primary); margin-top: 0;">📝 Bước 2: Khai báo tiêu hao (Hàng đang có tại xưởng)</h3>
+        
+        <div class="form-group">
+            <label>Chọn can/thùng hóa chất đang dùng</label>
+            <select id="consume-issue-id" required onchange="checkFactoryBalance()" style="background:#fffbe6; font-weight: bold; border: 2px solid var(--warning);">
+                </select>
+            <span id="factory-balance-hint" class="hint-text"></span>
+            <input type="hidden" id="current-factory-balance" value="0">
+        </div>
+
+        <div style="display:flex; gap:15px; flex-wrap: wrap;">
+            <div class="form-group" style="flex:1; min-width: 150px;">
+                <label>Ngày sử dụng</label>
+                <input type="date" id="consume-date" required>
+            </div>
+            
+            <div class="form-group" style="flex:1; min-width: 200px;">
+                <label>Số lượng đã dùng</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="number" step="0.01" id="consume-qty" required placeholder="Ví dụ: 5.5" oninput="validateConsumeQty()">
+                    <button type="button" class="max-btn" onclick="fillMaxConsume()">MAX</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Mục đích sử dụng chính</label>
+            <select id="consume-purpose" required onchange="toggleOtherPurpose()">
+                <option value="Sản xuất dán đế">Sản xuất dán đế (Sole attaching)</option>
+                <option value="Xử lý bề mặt">Xử lý bề mặt (Priming/Wiping)</option>
+                <option value="Vệ sinh máy móc">Vệ sinh máy móc / Tẩy keo</option>
+                <option value="In ấn">In ấn (Printing)</option>
+                <option value="Khác">Khác (Vui lòng ghi rõ lý do)...</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="div-purpose-other" style="display: none; border-left: 3px solid var(--primary); padding-left: 15px;">
+            <label>Vui lòng ghi rõ mục đích khác:</label>
+            <input type="text" id="consume-other" placeholder="Gõ mục đích sử dụng thực tế vào đây...">
+        </div>
+
+        <div class="spill-box">
+            <label>
+                <input type="checkbox" id="consume-spill"> 
+                <span>⚠️ ĐÁNH DẤU: Đây là sự cố đổ / tràn / rách thủng / hư hỏng hóa chất ngoài ý muốn.</span>
+            </label>
+        </div>
+
+        <button type="submit" id="btn-submit-consume">💾 LƯU BÁO CÁO TIÊU HAO</button>
+    </form>
+    
+    <div id="empty-msg" style="display:none; text-align:center; padding:30px; color:gray; border: 1px dashed #ccc; border-radius: 8px;">
+        <h3 style="color:var(--danger); margin-bottom: 10px;">Xưởng chưa có hàng</h3>
+        Hiện tại xưởng của bạn không giữ lô hóa chất nào, hoặc toàn bộ đã được xài hết.<br>
+        Vui lòng liên hệ Thủ Kho để phát thêm hàng.
+    </div>
+
+</div>
+
+<script>
+    // 1. CẤU HÌNH KẾT NỐI SUPABASE
+    const SUPABASE_URL = 'https://hnyrwfsslsscdmbetchj.supabase.co'; 
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhueXJ3ZnNzbHNzY2RtYmV0Y2hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNTkyMzYsImV4cCI6MjA5MzYzNTIzNn0.KQ5pYF0ktcJmstTIF2eJRnkEhnTAtzhTTN1C1VI7Gl4';
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 2. KHỞI TẠO KHI MỞ TRANG
+    document.addEventListener("DOMContentLoaded", () => { 
+        loadDepartments(); 
+        setTodayDate(); 
+    });
+
+    function showNoti(msg, type='success') { 
+        const n = document.getElementById('notification'); 
+        n.textContent = msg; 
+        n.className = `alert alert-${type}`; 
+        n.style.display = 'block'; 
+        setTimeout(() => n.style.display = 'none', 4000); 
+    }
+
+    function setTodayDate() { 
+        document.getElementById('consume-date').value = new Date().toISOString().split('T')[0]; 
+    }
+
+    // ================== LOGIC TẢI XƯỞNG ==================
+    async function loadDepartments() {
+        const { data, error } = await db.from('departments').select('dept_name').order('dept_name');
+        const sel = document.getElementById('factory-dept-select');
+        
+        if(data && data.length > 0) {
+            sel.innerHTML = '<option value="">-- Click để chọn Xưởng / Bộ phận --</option>' + 
+                            data.map(d => `<option value="${d.dept_name}">${d.dept_name}</option>`).join('');
+        } else {
+            sel.innerHTML = '<option value="">-- Hệ thống chưa có xưởng nào --</option>';
+        }
+    }
+
+    // Hàm gọi chung để tải cả Hàng Chờ và Hàng Đang Tồn khi đổi Xưởng
+    function refreshAllData() {
+        const deptName = document.getElementById('factory-dept-select').value;
+        if(!deptName) {
+            document.getElementById('pending-section').style.display = 'none';
+            document.getElementById('form-consume').style.display = 'none';
+            document.getElementById('empty-msg').style.display = 'none';
+            return;
+        }
+        
+        // Tải 2 luồng song song
+        loadPendingIssues(deptName); 
+        loadAcceptedInventory(deptName);
+    }
+
+    // ================== LOGIC HÀNG CHỜ XÁC NHẬN (PENDING) ==================
+    async function loadPendingIssues(deptName) {
+        // Lấy các phiếu phát xuống xưởng này có status là 'pending'
+        const { data, error } = await db.from('production_issues')
+            .select('*, inventory_receipts(batch_number, chemicals(chemical_name))')
+            .eq('department', deptName)
+            .eq('status', 'pending');
+            
+        const pendingBox = document.getElementById('pending-section');
+        const pendingList = document.getElementById('pending-list');
+
+        if(data && data.length > 0) {
+            pendingBox.style.display = 'block';
+            let html = '';
+            data.forEach(issue => {
+                html += `
+                    <div class="pending-item">
+                        <div class="pending-info">
+                            <b style="color:var(--dark); font-size:16px;">${issue.inventory_receipts.chemicals.chemical_name}</b><br>
+                            Số Lô: <span style="color:var(--danger); font-weight:bold;">${issue.inventory_receipts.batch_number}</span><br>
+                            Số lượng Kho giao: <b style="color:var(--primary);">${issue.quantity_issued}</b>
+                        </div>
+                        <div>
+                            <button class="btn btn-confirm" onclick="updateIssueStatus('${issue.id}', 'accepted')">✅ Nhận Đủ Hàng</button>
+                            <button class="btn btn-reject" onclick="updateIssueStatus('${issue.id}', 'rejected')">❌ Từ Chối / Trả Kho</button>
+                        </div>
+                    </div>`;
+            });
+            pendingList.innerHTML = html;
+        } else {
+            pendingBox.style.display = 'none';
+            pendingList.innerHTML = '';
+        }
+    }
+
+    // Hàm cập nhật trạng thái phiếu phát hàng
+    async function updateIssueStatus(issueId, newStatus) {
+        let confirmMsg = newStatus === 'accepted' 
+            ? "Bạn xác nhận đã nhận đủ số lượng hóa chất này?" 
+            : "Hàng bị lỗi hoặc dư thừa. Bạn chắc chắn muốn trả lô này về kho chính?";
+            
+        if(confirm(confirmMsg)) {
+            const { error } = await db.from('production_issues').update({ status: newStatus }).eq('id', issueId);
+            if(error) {
+                showNoti(error.message, "danger");
+            } else {
+                if(newStatus === 'accepted') showNoti("Đã nhận hàng! Bạn có thể khai báo tiêu hao cho lô này.");
+                if(newStatus === 'rejected') showNoti("Đã trả hàng thành công! Kho đã nhận lại số lượng.");
+                
+                // Cập nhật lại giao diện ngay lập tức
+                refreshAllData(); 
+            }
+        }
+    }
+
+    // ================== LOGIC TỒN TẠI XƯỞNG & KHAI BÁO ==================
+    let factoryInventory = []; // Mảng chứa hàng ĐÃ NHẬN của xưởng
+
+    async function loadAcceptedInventory(deptName) {
+        // Chỉ lấy các phiếu có status là 'accepted'
+        const { data, error } = await db.from('production_issues')
+            .select('*, inventory_receipts(batch_number, unit, chemicals(chemical_name)), daily_consumptions(quantity_used)')
+            .eq('department', deptName)
+            .eq('status', 'accepted');
+            
+        // Tính toán số tồn của từng phiếu (Số kho cấp - Tổng đã xài)
+        factoryInventory = data.map(issue => {
+            let totalUsed = issue.daily_consumptions.reduce((sum, cons) => sum + Number(cons.quantity_used), 0);
+            let balance = Number(issue.quantity_issued) - totalUsed;
+            return { ...issue, balance: balance };
+        });
+
+        // Chỉ giữ lại những can/thùng chưa xài hết (balance > 0)
+        factoryInventory = factoryInventory.filter(issue => issue.balance > 0);
+        
+        const consumeForm = document.getElementById('form-consume');
+        const emptyMsg = document.getElementById('empty-msg');
+
+        if(factoryInventory.length > 0) {
+            consumeForm.style.display = 'block'; 
+            emptyMsg.style.display = 'none';
+            
+            let options = '<option value="">-- Click chọn can/thùng đang dùng --</option>';
+            factoryInventory.forEach(item => {
+                options += `<option value="${item.id}">${item.inventory_receipts.chemicals.chemical_name} (Lô: ${item.inventory_receipts.batch_number})</option>`;
+            });
+            document.getElementById('consume-issue-id').innerHTML = options;
+            
+            // Reset hint khi tải lại danh sách
+            document.getElementById('factory-balance-hint').textContent = "";
+            document.getElementById('current-factory-balance').value = "0";
+            document.getElementById('consume-qty').value = "";
+        } else { 
+            consumeForm.style.display = 'none'; 
+            emptyMsg.style.display = 'block'; 
+        }
+    }
+
+    function checkFactoryBalance() {
+        const selectedIssueId = document.getElementById('consume-issue-id').value;
+        const hintEl = document.getElementById('factory-balance-hint');
+        const hiddenBalEl = document.getElementById('current-factory-balance');
+        
+        if(!selectedIssueId) { 
+            hintEl.textContent = ""; 
+            hiddenBalEl.value = "0"; 
+            return; 
+        }
+
+        const item = factoryInventory.find(x => x.id === selectedIssueId);
+        if(item) { 
+            hintEl.textContent = `Tồn thực tế tại xưởng: ${item.balance} ${item.inventory_receipts.unit}`; 
+            hintEl.style.color = "var(--primary)";
+            hiddenBalEl.value = item.balance; 
+            validateConsumeQty(); // Chạy kiểm tra validate nếu user đã lỡ gõ số trước đó
+        }
+    }
+
+    // Nút Max điền đầy số lượng
+    function fillMaxConsume() { 
+        document.getElementById('consume-qty').value = document.getElementById('current-factory-balance').value; 
+        validateConsumeQty(); 
+    }
+    
+    // Ràng buộc không cho báo cáo lố số tồn
+    function validateConsumeQty() { 
+        const qty = Number(document.getElementById('consume-qty').value);
+        const max = Number(document.getElementById('current-factory-balance').value);
+        const btn = document.getElementById('btn-submit-consume');
+        const hint = document.getElementById('factory-balance-hint');
+
+        if(qty > max) {
+            btn.disabled = true;
+            hint.textContent = `❌ Lỗi: Xưởng bạn chỉ còn tối đa ${max}. Không thể khai báo lố!`;
+            hint.style.color = "red";
+        } else {
+            btn.disabled = false;
+            // Phục hồi lại dòng text màu xanh
+            const item = factoryInventory.find(x => x.id === document.getElementById('consume-issue-id').value);
+            if(item) {
+                hint.textContent = `Tồn thực tế tại xưởng: ${item.balance} ${item.inventory_receipts.unit}`;
+                hint.style.color = "var(--primary)";
+            }
+        }
+    }
+
+    // Logic ẩn/hiện ô nhập mục đích "Khác"
+    function toggleOtherPurpose() { 
+        const purpose = document.getElementById('consume-purpose').value;
+        const otherDiv = document.getElementById('div-purpose-other');
+        const otherInput = document.getElementById('consume-other');
+        
+        if(purpose === 'Khác') {
+            otherDiv.style.display = 'block';
+            otherInput.required = true;
+        } else {
+            otherDiv.style.display = 'none';
+            otherInput.required = false;
+            otherInput.value = '';
+        }
+    }
+
+    // ================== THỰC HIỆN LƯU KHAI BÁO ==================
+    async function addConsumption(e) {
+        e.preventDefault();
+        
+        const issueId = document.getElementById('consume-issue-id').value;
+        if(!issueId) { showNoti("Vui lòng chọn đúng can/thùng đang dùng!", "danger"); return; }
+
+        // Xử lý chuỗi ghi chú: [SỰ CỐ] + Mục đích
+        const isSpill = document.getElementById('consume-spill').checked;
+        const purposeSelect = document.getElementById('consume-purpose').value;
+        let finalPurpose = purposeSelect;
+        
+        if (purposeSelect === 'Khác') {
+            finalPurpose = document.getElementById('consume-other').value.trim();
+        }
+        
+        const finalNote = (isSpill ? "[SỰ CỐ TRÀN ĐỔ/HƯ HỎNG] " : "") + finalPurpose;
+
+        const payload = { 
+            issue_id: issueId, 
+            usage_date: document.getElementById('consume-date').value, 
+            quantity_used: document.getElementById('consume-qty').value, 
+            note: finalNote 
+        };
+
+        const { error } = await db.from('daily_consumptions').insert([payload]);
+        
+        if(error) { 
+            showNoti("Lỗi hệ thống: " + error.message, "danger"); 
+        } else {
+            showNoti("✅ Đã lưu báo cáo tiêu hao thành công lên hệ thống HSE!", "success"); 
+            
+            // Reset toàn bộ form sau khi gửi
+            document.getElementById('form-consume').reset(); 
+            document.getElementById('factory-balance-hint').textContent = "";
+            toggleOtherPurpose(); // Ẩn ô input khác đi
+            setTodayDate(); 
+            
+            // Cập nhật lại danh sách hàng tồn tại xưởng (sẽ ẩn lô nếu vừa xài hết)
+            refreshAllData(); 
+        }
+    }
+</script>
+</body>
+</html>
