@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng Nhập - Hệ Thống HSE CI BAO</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #e9ecef; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; margin: 0; 
+        }
+        .login-box { 
+            background: white; padding: 40px; border-radius: 10px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center;
+        }
+        h2 { color: #198754; margin-bottom: 5px; }
+        p { color: #666; font-size: 14px; margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        .form-group label { font-weight: bold; font-size: 14px; display: block; margin-bottom: 5px; }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 15px; }
+        .btn-login { width: 100%; padding: 15px; background: #0d6efd; color: white; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        .btn-login:hover { background: #0b5ed7; }
+        #error-msg { color: red; font-size: 14px; font-weight: bold; margin-bottom: 15px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="login-box">
+        <div style="font-size: 50px; margin-bottom: 10px;">🏭</div>
+        <h2>HỆ THỐNG TRUY XUẤT HÓA CHẤT</h2>
+        <p>Phòng An Toàn - CI BAO</p>
+
+        <div id="error-msg">Tài khoản hoặc mật khẩu không đúng!</div>
+
+        <form onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label>Tài khoản</label>
+                <input type="text" id="username" required placeholder="Nhập tên đăng nhập...">
+            </div>
+            <div class="form-group">
+                <label>Mật khẩu</label>
+                <input type="password" id="password" required placeholder="Nhập mật khẩu...">
+            </div>
+            <button type="submit" class="btn-login" id="btn-submit">ĐĂNG NHẬP</button>
+        </form>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://hnyrwfsslsscdmbetchj.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhueXJ3ZnNzbHNzY2RtYmV0Y2hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNTkyMzYsImV4cCI6MjA5MzYzNTIzNn0.KQ5pYF0ktcJmstTIF2eJRnkEhnTAtzhTTN1C1VI7Gl4';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value;
+            const btn = document.getElementById('btn-submit');
+            const err = document.getElementById('error-msg');
+            
+            btn.textContent = "Đang kiểm tra..."; btn.disabled = true; err.style.display = 'none';
+
+            // Kiểm tra DB
+            const { data, error } = await db.from('users_account')
+                .select('*').eq('username', user).eq('password', pass).single();
+
+            if (data) {
+                // Lưu "Thẻ thông hành" vào trình duyệt
+                localStorage.setItem('userLogged', 'true');
+                localStorage.setItem('userRole', data.role);
+                localStorage.setItem('userName', data.username);
+
+                // Điều hướng dựa theo chức vụ
+                if (data.role === 'HSE') window.location.href = 'hse.html';
+                else if (data.role === 'KHO') window.location.href = 'kho.html';
+                else if (data.role === 'XUONG') window.location.href = 'sanxuat.html';
+            } else {
+                err.style.display = 'block';
+                btn.textContent = "ĐĂNG NHẬP"; btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+<script>
+    if(localStorage.getItem('userRole') !== 'KHO' && localStorage.getItem('userRole') !== 'HSE') {
+        window.location.href = 'index.html';
+    }
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giao Diện Thủ Kho - CI BAO HSE</title>
